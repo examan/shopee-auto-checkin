@@ -1,0 +1,16 @@
+:root {
+  user-select: none;
+  font-family: system-ui;
+  accent-color: #01A8DD;
+  font-size: 14px;
+  line-height: 20px;
+  color-scheme: dark light;
+  background-color: Canvas;
+  color: CanvasText;
+  white-space: nowrap;
+}
+
+body {
+  margin: 0;
+  font-size: unset;
+}

@@ -1,0 +1,38 @@
+env:
+  webextensions: true
+  browser: true
+  es2022: true
+extends:
+  - plugin:vue/vue3-recommended
+  - standard
+  - eslint:all
+  - standard-with-typescript
+  - plugin:@typescript-eslint/all
+  - plugin:prettier/recommended
+parser: vue-eslint-parser
+parserOptions:
+  parser: '@typescript-eslint/parser'
+  ecmaVersion: latest
+  project: ./tsconfig.json
+  extraFileExtensions:
+    - .vue
+ignorePatterns: vite-env.d.ts
+rules:
+  capitalized-comments: 'off'
+  default-case: 'off'
+  func-style:
+    - error
+    - declaration
+  max-lines-per-function: 'off'
+  max-statements: 'off'
+  multiline-comment-style:
+    - error
+    - separate-lines
+  no-console: 'off'
+  '@typescript-eslint/no-magic-numbers':
+    - error
+    - ignore:
+        - 0
+        - 1
+  '@typescript-eslint/no-type-alias': 'off'
+  '@typescript-eslint/prefer-readonly-parameter-types': 'off'
