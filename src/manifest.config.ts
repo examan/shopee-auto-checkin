@@ -6,7 +6,7 @@ import { defineManifest } from "@crxjs/vite-plugin";
 export default defineManifest(() => ({
   manifest_version: 3,
   name: NAME,
-  version: "1.1.0",
+  version: "1.1.1",
 
   action: {},
   default_locale: "zh_TW",

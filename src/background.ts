@@ -174,10 +174,8 @@ async function init(): Promise<void> {
   chrome.runtime.onMessage.addListener(onMessage);
   /* eslint-enable @typescript-eslint/no-misused-promises */
 
-  /* eslint-disable @typescript-eslint/no-misused-promises */
+  /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
   chrome.runtime.onStartup.addListener(startupCheckin);
-  chrome.runtime.onInstalled.addListener(startupCheckin);
-  /* eslint-enable @typescript-eslint/no-misused-promises */
 
   const { time, timeSetting } = await triggerSetting.get();
   if (time) {

@@ -29,6 +29,7 @@ rules:
     - error
     - separate-lines
   no-console: 'off'
+  no-ternary: 'off'
   '@typescript-eslint/no-magic-numbers':
     - error
     - ignore:
