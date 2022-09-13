@@ -172,15 +172,12 @@ async function init(): Promise<void> {
   /* eslint-disable @typescript-eslint/no-misused-promises */
   chrome.notifications.onClicked.addListener(onNotificationClicked);
   chrome.runtime.onMessage.addListener(onMessage);
-  /* eslint-enable @typescript-eslint/no-misused-promises */
-
-  /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
   chrome.runtime.onStartup.addListener(startupCheckin);
+  chrome.alarms.onAlarm.addListener(scheduledCheckin);
+  /* eslint-enable @typescript-eslint/no-misused-promises */
 
   const { time, timeSetting } = await triggerSetting.get();
   if (time) {
-    /* eslint-disable-next-line @typescript-eslint/no-misused-promises */
-    chrome.alarms.onAlarm.addListener(scheduledCheckin);
     createAlarm(timeSetting);
   }
 }
