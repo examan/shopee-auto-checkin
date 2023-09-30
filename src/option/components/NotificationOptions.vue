@@ -13,7 +13,7 @@ const options: [Result, string][] = [
 
 <template>
   <OptionList
-    title="當符合下列勾選的條件時，顯示通知"
+    title="當符合勾選的結果時，顯示通知"
     :options="options"
     :setting="(setting as any)"
   ></OptionList>
