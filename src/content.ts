@@ -1,11 +1,20 @@
 import type { Result } from "./lib/result";
 
-function checkExtensionCreatedTab(): boolean {
-  return document.documentElement.dataset[chrome.runtime.id] === "true";
+function checkContext(): boolean {
+  return window.name === chrome.runtime.id;
+}
+
+function resetContext(): boolean {
+  resetContext();
 }
 
 async function waitLoad(): Promise<void> {
   await new Promise<void>((resolve) => {
+    if (document.readyState === "complete") {
+      resolve();
+      return;
+    }
+
     window.addEventListener(
       "load",
       () => {
@@ -55,8 +64,13 @@ async function waitIdle(): Promise<void> {
   });
 }
 
-function checkLogin(): boolean {
-  return document.querySelector("a.navbar__link--login") === null;
+function checkLoggedOut(): boolean {
+  return (
+    document.querySelector('a[href^="/buyer/signup"]')?.checkVisibility({
+      opacityProperty: true,
+      visibilityProperty: true,
+    }) === true
+  );
 }
 
 function getCheckinButton(): HTMLButtonElement | null {
@@ -74,19 +88,22 @@ async function checkin(): Promise<void> {
   await waitMutationStopped(document.documentElement);
   await waitIdle();
 
-  if (!checkLogin()) {
+  if (checkLoggedOut()) {
     await sendResult("logout");
+    resetContext();
     return;
   }
 
   const checkinButton = getCheckinButton();
   if (checkinButton === null) {
     await sendResult("error");
+    resetContext();
     return;
   }
 
-  if (checkinButton.dataset["inactive"] === "true") {
+  if (checkinButton.dataset.inactive === "true") {
     await sendResult("checkedin");
+    resetContext();
     return;
   }
 
@@ -95,8 +112,9 @@ async function checkin(): Promise<void> {
   await waitMutationStopped(checkinButton);
   await waitIdle();
   await sendResult("success");
+  resetContext();
 }
 
-if (checkExtensionCreatedTab()) {
+if (checkContext()) {
   await checkin();
 }

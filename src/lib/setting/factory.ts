@@ -12,7 +12,7 @@ const connect = ((): (() => void) => {
 
 export function factory<T extends Record<string, unknown>, N extends string>(
   name: N,
-  defaults: T
+  defaults: T,
 ): {
   get: () => Promise<T>;
   set: (value: T) => Promise<void>;

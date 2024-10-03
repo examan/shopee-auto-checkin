@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { type Trigger, setting } from "../../lib/setting/trigger";
 import OptionList from "./OptionList.vue";
-import type { Trigger } from "../../lib/setting/trigger";
-import setting from "../../lib/setting/trigger";
+import type { Options } from "../../lib/options";
 
-const options: [Trigger, string][] = [
+const options: Options<Trigger> = [
   ["startup", "啟動瀏覽器"],
   ["time", "每天同一時間"],
 ];
@@ -19,7 +19,7 @@ const options: [Trigger, string][] = [
       <input
         v-model="values.timeSetting"
         type="time"
-        step="1"
+        step="60"
         :disabled="!values.time"
       />
     </template>

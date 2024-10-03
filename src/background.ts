@@ -1,7 +1,9 @@
 import { CHECKIN_URL, MINUTES_PER_DAY, NAME } from "./lib/constant";
+import { isRecordToday, setRecord } from "./lib/record";
 import type { Result } from "./lib/result";
-import notificationSetting from "./lib/setting/notification";
-import triggerSetting from "./lib/setting/trigger";
+import { setting as behaviorSetting } from "./lib/setting/behavior";
+import { setting as notificationSetting } from "./lib/setting/notification";
+import { setting as triggerSetting } from "./lib/setting/trigger";
 
 const RESULT_MESSAGE: { [result in Result]: string } = {
   checkedin: "已為簽到狀態，不執行任何動作",
@@ -13,43 +15,47 @@ const RESULT_MESSAGE: { [result in Result]: string } = {
 async function onNotificationClicked(notificationId: string): Promise<void> {
   console.info("通知被點擊");
 
-  const { result, tabId } = JSON.parse(notificationId) as {
-    result: Result;
-    tabId: number;
-  };
+  const { tabId } = JSON.parse(notificationId) as { tabId: number };
 
-  if (!["error", "logout"].includes(result)) {
-    console.error("無相對應通知動作，執行中斷");
-    return;
+  try {
+    await chrome.tabs.update(tabId, { active: true });
+    console.info("顯示頁籤");
+  } catch {
+    console.error("無法顯示頁籤");
   }
-
-  await chrome.tabs.update(tabId, { active: true });
-  console.info("顯示頁籤");
 }
 
 async function onMessage(
   result: Result,
-  { tab }: chrome.runtime.MessageSender
+  { tab }: chrome.runtime.MessageSender,
 ): Promise<void> {
   const tabId = tab?.id ?? 0;
 
+  const { keepPage, silentNotification } = await behaviorSetting.get();
+
   if (["checkedin", "success"].includes(result)) {
-    await chrome.tabs.remove(tabId);
-    console.info("關閉頁籤");
+    await setRecord();
+    console.info("寫入簽到記錄");
+
+    if (result === "checkedin" || !keepPage) {
+      await chrome.tabs.remove(tabId);
+      console.info("關閉頁籤");
+    }
   }
 
   const resultMessage = RESULT_MESSAGE[result];
   console.info(resultMessage);
 
-  const setting = await notificationSetting.get();
-  if (setting[result]) {
-    const notificationId = JSON.stringify({ result, tabId });
+  const { [result]: shouldNotify } = await notificationSetting.get();
+  if (shouldNotify) {
+    const notificationId = JSON.stringify({ tabId });
 
     console.info("產生通知");
 
     chrome.notifications.create(notificationId, {
       iconUrl: "/icon.ico",
       message: resultMessage,
+      silent: silentNotification,
       title: NAME,
       type: "basic",
     });
@@ -71,7 +77,7 @@ function validTabId(tabId: number | undefined): tabId is number {
 async function markAsOpenedTab(tabId: number): Promise<void> {
   await chrome.scripting.executeScript({
     func: () => {
-      document.documentElement.dataset[chrome.runtime.id] = "true";
+      window.name = chrome.runtime.id;
     },
     target: { tabId },
   });
@@ -79,11 +85,9 @@ async function markAsOpenedTab(tabId: number): Promise<void> {
 
 async function CheckinInNewTab(): Promise<void> {
   console.info("取得當前視窗");
-
   await waitCurrentWindow();
 
   console.info("開啟頁籤");
-
   const { id: tabId } = await chrome.tabs.create({
     active: false,
     url: CHECKIN_URL,
@@ -94,9 +98,8 @@ async function CheckinInNewTab(): Promise<void> {
     return;
   }
 
-  await chrome.tabs.move(tabId, { index: -1 });
-
   await markAsOpenedTab(tabId);
+  await chrome.tabs.move(tabId, { index: -1 });
 }
 
 async function CheckinInNewWindow(): Promise<void> {
@@ -114,15 +117,22 @@ async function CheckinInNewWindow(): Promise<void> {
     return;
   }
 
-  await chrome.tabs.update(tabId, { active: false, pinned: true });
-
   await markAsOpenedTab(tabId);
+  await chrome.tabs.update(tabId, { active: false, pinned: true });
 }
 
 async function startupCheckin(): Promise<void> {
   const { startup } = await triggerSetting.get();
-
   if (!startup) {
+    console.info("不需進行啟動瀏覽器時的簽到");
+    return;
+  }
+
+  await createNextAlarm();
+
+  const { forceTrigger } = await behaviorSetting.get();
+  if (!forceTrigger && (await isRecordToday())) {
+    console.info("今日已簽到，不進行啟動簽到");
     return;
   }
 
@@ -130,10 +140,16 @@ async function startupCheckin(): Promise<void> {
 }
 
 async function scheduledCheckin(): Promise<void> {
-  console.info("確認是否有已開啟視窗");
+  console.info("排程觸發");
+  await createNextAlarm();
+
+  const { forceTrigger } = await behaviorSetting.get();
+  if (!forceTrigger && (await isRecordToday())) {
+    console.info("今日已簽到，不進行排程簽到");
+    return;
+  }
 
   const { length } = await chrome.windows.getAll();
-
   if (length === 0) {
     await CheckinInNewWindow();
   } else {
@@ -141,15 +157,36 @@ async function scheduledCheckin(): Promise<void> {
   }
 }
 
-function createAlarm(timeSetting: string): void {
+function formatDate(date: Date): string {
+  const DAY_IN_WEEK = 7;
+  const dayString = new Intl.RelativeTimeFormat("zh-Hant", {
+    numeric: "auto",
+  }).format(
+    (date.getDay() + DAY_IN_WEEK - new Date().getDay()) % DAY_IN_WEEK,
+    "day",
+  );
+  const timeString = new Intl.DateTimeFormat("zh-Hant", {
+    timeStyle: "medium",
+  }).format(date);
+
+  return `${dayString}${timeString}`;
+}
+
+async function createNextAlarm(): Promise<void> {
+  const { time, timeSetting } = await triggerSetting.get();
+  if (!time) {
+    console.info("不需設定排程");
+    await chrome.alarms.clearAll();
+    return;
+  }
+
   const date = new Date(`${new Date().toDateString()} ${timeSetting}`);
-  if (date.getTime() < Date.now()) {
+  if (date.getTime() <= Date.now() || (await isRecordToday())) {
     date.setDate(date.getDate() + 1);
   }
 
-  console.info("設定鬧鐘", date);
-
-  chrome.alarms.create(chrome.runtime.id, {
+  console.info("設定排程", formatDate(date));
+  await chrome.alarms.create(chrome.runtime.id, {
     periodInMinutes: MINUTES_PER_DAY,
     when: date.getTime(),
   });
@@ -161,25 +198,35 @@ function onActionClicked(): void {
 
 function onConnect(port: chrome.runtime.Port): void {
   port.onDisconnect.addListener(() => {
+    console.info("重新執行");
     chrome.runtime.reload();
   });
 }
 
-async function init(): Promise<void> {
-  chrome.action.onClicked.addListener(onActionClicked);
-  chrome.runtime.onConnect.addListener(onConnect);
+async function onInstalled({
+  reason,
+}: chrome.runtime.InstalledDetails): Promise<void> {
+  if (reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    console.info("安裝後初始化");
+    await startupCheckin();
+  } else {
+    console.info("更新後初始化");
+    if ((await chrome.alarms.getAll()).length !== 0) {
+      console.info("已有排程，結束動作");
+      return;
+    }
 
-  /* eslint-disable @typescript-eslint/no-misused-promises */
-  chrome.notifications.onClicked.addListener(onNotificationClicked);
-  chrome.runtime.onMessage.addListener(onMessage);
-  chrome.runtime.onStartup.addListener(startupCheckin);
-  chrome.alarms.onAlarm.addListener(scheduledCheckin);
-  /* eslint-enable @typescript-eslint/no-misused-promises */
-
-  const { time, timeSetting } = await triggerSetting.get();
-  if (time) {
-    createAlarm(timeSetting);
+    await createNextAlarm();
   }
 }
 
-void init();
+chrome.action.onClicked.addListener(onActionClicked);
+chrome.runtime.onConnect.addListener(onConnect);
+
+/* eslint-disable @typescript-eslint/no-misused-promises */
+chrome.notifications.onClicked.addListener(onNotificationClicked);
+chrome.runtime.onMessage.addListener(onMessage);
+chrome.runtime.onStartup.addListener(startupCheckin);
+chrome.alarms.onAlarm.addListener(scheduledCheckin);
+chrome.runtime.onInstalled.addListener(onInstalled);
+/* eslint-enable @typescript-eslint/no-misused-promises */

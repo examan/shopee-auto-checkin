@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { onMounted, reactive, watch } from "vue";
 import CheckOption from "./CheckOption.vue";
+import OptionDescription from "./OptionDescription.vue";
+import type { Options } from "../../lib/options";
 
 type T = Record<string, boolean>;
 
 const props = defineProps<{
   title: string;
-  options: [string, string][];
+  options: Options<string>;
   setting: {
     defaults: T;
     get: () => Promise<T>;
@@ -31,14 +33,17 @@ onMounted(async () => {
   <div class="block">
     <div class="block-name">{{ props.title }}</div>
     <div class="option-list">
-      <template v-for="[name, description] of props.options" :key="name">
+      <template v-for="[name, description, extra] of props.options" :key="name">
         <CheckOption
           :model-value="values[name]!"
           @update:model-value="values[name] = $event"
         >
           {{ description }}
         </CheckOption>
-        <slot :name="name" :values="values"></slot>
+        <slot :name="name" :values="values" />
+        <OptionDescription v-if="extra" class="extra">
+          （{{ extra }}）
+        </OptionDescription>
       </template>
     </div>
   </div>
@@ -46,8 +51,13 @@ onMounted(async () => {
 
 <style scoped>
 .block {
-  padding: 18px 32px 12px;
-  border-top: 1px solid #737373;
+  --low-key-color: color-mix(in oklab, CanvasText, Canvas);
+
+  padding: 18px 32px;
+
+  & + & {
+    border-top: 0.5px solid var(--low-key-color);
+  }
 }
 
 .block-name {
@@ -59,7 +69,12 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: auto auto 1fr;
   align-items: center;
-  justify-items: start;
   grid-gap: 10px;
+}
+
+.extra {
+  font-size: 0.8em;
+  color: var(--low-key-color);
+  margin-top: -6px;
 }
 </style>

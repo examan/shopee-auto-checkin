@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OptionDescription from "./OptionDescription.vue";
 import { computed } from "vue";
 
 const props = defineProps<{ modelValue: boolean }>();
@@ -17,7 +18,7 @@ const value = computed({
 <template>
   <label>
     <input v-model="value" type="checkbox" />
-    <span><slot /></span>
+    <OptionDescription><slot /></OptionDescription>
   </label>
 </template>
 
@@ -35,9 +36,5 @@ input {
   height: 20px;
   margin: 0;
   grid-column: 1;
-}
-
-span {
-  grid-column: 2;
 }
 </style>

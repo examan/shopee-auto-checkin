@@ -1,12 +1,13 @@
 /* eslint-disable sort-keys */
 
-import { CHECKIN_URL, NAME } from "./lib/constant";
+import { CHECKIN_URL, LOGIN_URL, NAME } from "./lib/constant";
 import { defineManifest } from "@crxjs/vite-plugin";
 
 export default defineManifest(() => ({
   manifest_version: 3,
   name: NAME,
-  version: "1.1.3",
+  version: "2.0.1",
+  description: "自動簽到蝦皮購物，賺取蝦幣獎勵",
 
   action: {},
   default_locale: "zh_TW",
@@ -17,8 +18,6 @@ export default defineManifest(() => ({
     "128": "128.png",
     "256": "256.png",
   },
-
-  author: "Megaman",
   background: {
     service_worker: "src/background.ts",
     type: "module",
@@ -26,10 +25,10 @@ export default defineManifest(() => ({
   content_scripts: [
     {
       js: ["src/content.ts"],
-      matches: [CHECKIN_URL],
+      matches: [LOGIN_URL, CHECKIN_URL],
     },
   ],
-  host_permissions: [CHECKIN_URL],
+  host_permissions: [LOGIN_URL, CHECKIN_URL],
   options_ui: { page: "src/option/index.html" },
   permissions: ["alarms", "notifications", "scripting", "storage"],
 }));

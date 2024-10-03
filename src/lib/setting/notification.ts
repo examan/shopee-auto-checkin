@@ -5,11 +5,11 @@ type Notifications = {
   [k in Result]: boolean;
 };
 
-const defaults: Notifications = {
+const DEFAULTS: Notifications = {
   checkedin: false,
   error: true,
   logout: true,
   success: true,
 };
 
-export default factory("notification", defaults);
+export const setting = factory("notification", DEFAULTS);
