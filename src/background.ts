@@ -121,6 +121,11 @@ async function CheckinInNewWindow(): Promise<void> {
   await chrome.tabs.update(tabId, { active: false, pinned: true });
 }
 
+async function skipCheckinToday(): Promise<boolean> {
+  const { forceTrigger } = await behaviorSetting.get();
+  return !forceTrigger && (await isRecordToday());
+}
+
 async function startupCheckin(): Promise<void> {
   const { startup } = await triggerSetting.get();
   if (!startup) {
@@ -130,8 +135,7 @@ async function startupCheckin(): Promise<void> {
 
   await createNextAlarm();
 
-  const { forceTrigger } = await behaviorSetting.get();
-  if (!forceTrigger && (await isRecordToday())) {
+  if (await skipCheckinToday()) {
     console.info("今日已簽到，不進行啟動簽到");
     return;
   }
@@ -143,8 +147,7 @@ async function scheduledCheckin(): Promise<void> {
   console.info("排程觸發");
   await createNextAlarm();
 
-  const { forceTrigger } = await behaviorSetting.get();
-  if (!forceTrigger && (await isRecordToday())) {
+  if (await skipCheckinToday()) {
     console.info("今日已簽到，不進行排程簽到");
     return;
   }
@@ -181,7 +184,7 @@ async function createNextAlarm(): Promise<void> {
   }
 
   const date = new Date(`${new Date().toDateString()} ${timeSetting}`);
-  if (date.getTime() <= Date.now() || (await isRecordToday())) {
+  if (date.getTime() <= Date.now() || (await skipCheckinToday())) {
     date.setDate(date.getDate() + 1);
   }
 
@@ -198,8 +201,8 @@ function onActionClicked(): void {
 
 function onConnect(port: chrome.runtime.Port): void {
   port.onDisconnect.addListener(() => {
-    console.info("重新執行");
-    chrome.runtime.reload();
+    console.info("設定後重新排程");
+    void createNextAlarm();
   });
 }
 
@@ -211,11 +214,6 @@ async function onInstalled({
     await startupCheckin();
   } else {
     console.info("更新後初始化");
-    if ((await chrome.alarms.getAll()).length !== 0) {
-      console.info("已有排程，結束動作");
-      return;
-    }
-
     await createNextAlarm();
   }
 }

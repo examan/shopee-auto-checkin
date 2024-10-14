@@ -4,8 +4,8 @@ function checkContext(): boolean {
   return window.name === chrome.runtime.id;
 }
 
-function resetContext(): boolean {
-  resetContext();
+function resetContext(): void {
+  window.name = "";
 }
 
 async function waitLoad(): Promise<void> {
@@ -20,7 +20,7 @@ async function waitLoad(): Promise<void> {
       () => {
         resolve();
       },
-      { once: true }
+      { once: true },
     );
   });
 }
@@ -75,7 +75,7 @@ function checkLoggedOut(): boolean {
 
 function getCheckinButton(): HTMLButtonElement | null {
   return document.querySelector<HTMLButtonElement>(
-    "button[class^=pcmall-dailycheckin_]"
+    "button[class^=pcmall-dailycheckin_]",
   );
 }
 
