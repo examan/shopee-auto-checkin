@@ -6,7 +6,7 @@ import { defineManifest } from "@crxjs/vite-plugin";
 export default defineManifest(() => ({
   manifest_version: 3,
   name: NAME,
-  version: "2.0.2",
+  version: "2.0.3",
   description: "自動簽到蝦皮購物，賺取蝦幣獎勵",
 
   action: {},

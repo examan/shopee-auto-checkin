@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "lint": "eslint --cache --cache-strategy content --ext .ts,.vue --fix src",
-    "build": "vue-tsc && vite build && cd dist/ && bestzip ../dist.zip *"
+    "build": "vue-tsc && vite build && cd dist/ && sed -i 's/true/false/' manifest.json && bestzip ../dist.zip *"
   },
   "dependencies": {
     "vue": "^3.2.41"
